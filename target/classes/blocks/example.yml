@@ -1,0 +1,246 @@
+# ====================================================================
+# LonelyBlock 方块配置示例文件
+# ====================================================================
+# 每一个顶层 key 都是一个独立的方块配置
+# 玩家破坏方块时会按顺序检查所有配置, 匹配上第一个就执行
+# 可在本目录 (blocks/) 下创建多个 .yml 文件, 所有文件会被合并加载
+# ====================================================================
+#
+# 数值随机值格式 (除掉落数量外, 所有数值字段均支持):
+#   "5"            - 固定值 5
+#   "5.5"          - 固定值 5.5
+#   "1_5"          - 随机范围 [1, 5], 默认 0 位小数 (返回整数)
+#   "1.5_5.5"      - 随机范围 [1.5, 5.5], 默认 0 位小数
+#   "1.5_5.5_2"    - 随机范围 [1.5, 5.5], 保留 2 位小数
+#   "1.5_5.5_0"    - 随机范围 [1.5, 5.5], 保留 0 位小数 (整数)
+#
+# 掉落数量(amount)随机值格式 (整数, 无小数字段):
+#   "3"            - 固定 3 个
+#   "1_5"          - 随机 1~5 个
+# ====================================================================
+#
+# ===== 挖掘速度控制 (急迫/挖掘疲劳 buff 机制) =====
+# 插件不再用自定义会话+发包裂纹动画控制挖掘速度, 而是让原版挖掘系统工作,
+# 通过给予玩家 急迫(Haste)/挖掘疲劳(Mining Fatigue) 效果把原版挖掘时间调整到配置目标.
+# 原版裂纹动画由客户端/服务端协同计算, 天然同步, 无不同步问题.
+#
+# 计算公式 (正确工具, 站立地面):
+#   原版时间 T = 方块硬度 * 1.5 / 工具材质速度
+#   急迫: 速度 *= (1 + 0.2 * 等级)  (Haste I=1.2x, II=1.4x, III=1.6x...)
+#   挖掘疲劳: 速度 *= 0.3^等级      (Fatigue I=0.3x, II=0.09x, III=0.027x...)
+# 插件在 (急迫, 疲劳) 组合空间内搜索最接近目标时间且"不快于目标"的等级组合.
+#
+# 因此 tools 配置项中除 tool/time 外, 还需填写 material (工具材质):
+#   material: 原版工具材质, 取值: wood / stone / iron / diamond / netherite / gold / hand
+#   ※ 请确保所填材质与物品实际材质一致 (尤其 NeigeItems 物品, 以其底层 Material 为准),
+#     否则原版挖掘实际速度与计算不符, 挖掘时间会有偏差.
+#
+# 方块硬度 (hardness, 可选): 用于挖掘速度计算.
+#   不填则按方块 Material 自动查表 (常见方块已内置); 查不到则默认 1.5 (石头).
+#   想精确控制时建议手动填写 (可查 Minecraft wiki: 方块硬度).
+# ====================================================================
+
+# ===== 示例1: 橡木原木 (木斧破坏, 概率掉落, 自定义挖掘时间) =====
+oak_log_example:
+  # 方块的英文ID列表 - 任意一个匹配即可
+  # 1.13+ 用 "minecraft:oak_log" 或 "OAK_LOG"; 1.8-1.12 用 "LOG:0" 或 "LOG"
+  # 建议同时填写多个版本ID以确保跨版本兼容
+  block-ids:
+    - "minecraft:oak_log"
+    - "OAK_LOG"
+    - "LOG:0"
+
+  # 方块硬度 (可选; 用于挖掘速度计算. 不填则自动查表, 橡木原木查表为 2.0)
+  hardness: 2.0
+
+  # ===== 挖掘条件 (全部满足才能挖掘; 留空则无条件) =====
+  conditions:
+    # 所需权限 (玩家必须拥有其中所有权限才能挖掘)
+    permissions: []
+    # 变量条件 - 格式: "变量名 操作符 数值"
+    #   操作符: >= (大于等于) | <= (小于等于) | == (等于) | != (不等于) | > (大于) | < (小于)
+    #   变量名: 本插件自定义变量 (如 ll_level) 或 PlaceholderAPI 占位符 (用 %% 包裹, 如 %player_points%)
+    # 示例: "ll_level >= 5" 表示 ll_level 变量需 >= 5 才能挖
+    variables:
+      - "ll_level >= 0"
+
+  # ===== 工具与挖掘时间 =====
+  # 列出的工具: 用对应工具挖掘, 按其 time 字段的秒数计时
+  # 未列出的工具: 仍可挖掘, 但使用 default-time 计时, 不掉落任何物品, 破坏后方块立马复原, 发送错误工具提示
+  # 若 tools 留空 (不填写), 则所有工具都视为"有效工具", 都会掉落物品
+  # time 支持随机值: 如 "2.0_4.0_2" 表示 2.00~4.00 秒, 保留2位小数
+  # material: 工具的原版材质 (wood/stone/iron/diamond/netherite/gold/hand),
+  #           插件据此计算所需急迫/疲劳等级以达成 time 目标. 务必与物品实际材质一致.
+  tools:
+    - tool: "name:&c木斧"
+      material: "wood"        # 木制工具, 原版速度 2.0
+      time: 2.50
+    - tool: "name:&c石斧"
+      material: "stone"       # 石制工具, 原版速度 4.0
+      time: 1.50
+    - tool: "mm:木斧"
+      material: "wood"
+      time: 0.50
+  # 未列出工具的默认挖掘时间 (秒, 支持随机值)
+  default-time: 5.00
+
+  # ===== 掉落物列表 (支持概率和CustomModelData, 数量/概率支持随机值) =====
+  # 每个掉落物可写成:
+  #   简写字符串: "mm:物品ID" (数量1, 概率100, 无CustomModelData)
+  #   或带参数字符串 (用 | 分隔, 因物品ID本身含冒号): "mm:物品ID|数量|概率|CustomModelData"
+  #       数量格式: "3" 或 "1_5" (随机1~5个)
+  #       概率为 0~100 (百分比), 支持随机值; CustomModelData 为整数, -1 表示不设置 (仅1.14+生效)
+  #   或映射 (推荐, 更清晰):
+  #       item: "mm:物品ID"        物品定义 (必填)
+  #       amount: 1                数量 (默认1, 支持随机值 "1_5")
+  #       chance: 100.0            概率 0~100 (默认100, 支持随机值)
+  #       custom-model-data: -1    CustomModelData (默认-1不设置, 仅1.14+生效)
+  drops:
+    - item: "mm:特殊木材"
+      amount: 2
+      chance: 50.0
+      custom-model-data: -1
+    - "ni:普通木板|1|100.0"
+    - "vanilla:STICK|3|80.0"
+    - item: "vanilla:APPLE"
+      amount: "1_3"           # 随机掉落 1~3 个
+      chance: "30_60"          # 概率随机 30%~60%
+
+  # ===== 奖励 (挖掘成功后给予; 数值支持随机值) =====
+  rewards:
+    money: 100.0          # 金币 (需 Vault), 0 或不填表示不给; 支持随机值
+    points: 5             # 点券 (需 PlayerPoints), 0 或不填表示不给; 支持随机值
+    exp: 20               # 原版经验值, 0 或不填表示不给; 支持随机值
+    # 自定义变量奖励 - 格式: "变量名:数值" (数值支持随机值)
+    variables:
+      - "mining_count:1"
+      - "ll_level:0.5_2.0_2"   # 随机给 0.50~2.00 点, 保留2位小数
+
+  # ===== 扣除 (挖掘成功后扣除; 若挖掘前不足则不能挖掘; 数值支持随机值) =====
+  costs:
+    money: 0.0
+    points: 0
+    exp: 0
+    variables: []
+
+  # ===== 消息 (挖掘后发送; 各项留空 "" 则不发送) =====
+  messages:
+    success: "&a你砍倒了一棵橡木! 获得 &e%money% &a金币!"   # 给挖掘者
+    broadcast: ""                                         # 全服通告 (留空则不通告)
+    wrong-tool: "&c你需要使用 &e木斧 &c或 &e石斧 &c才能砍伐橡木!"  # 错误工具提示
+    condition-failed: "&c你的等级不足以砍伐此橡木!"         # 条件不满足
+    no-permission: "&c你没有权限砍伐此橡木!"               # 权限不足
+    cannot-afford: "&c你的资源不足, 无法砍伐!"             # 资源不足
+
+  # ===== 方块恢复设置 =====
+  restore:
+    # 是否启用恢复 (true: 破坏后定时恢复; false: 永久破坏)
+    enabled: true
+    # 恢复时间 (秒, 支持随机值, 如 "20_40" 表示 20~40 秒)
+    time: 30.00
+
+  # ===== 挖掘后触发的命令 =====
+  commands:
+    - "op: give %player_name% beef 64"
+    - "console: say %player_name% 砍倒了一棵橡木!"
+
+# ===== 示例2: 钻石矿石 (条件挖掘 + 多种奖励 + 点券扣除) =====
+diamond_ore_example:
+  block-ids:
+    - "minecraft:diamond_ore"
+    - "DIAMOND_ORE"
+    - "DIAMOND_ORE:0"
+
+  # 钻石矿石硬度 3.0 (可省略, 自动查表亦为 3.0)
+  hardness: 3.0
+
+  conditions:
+    permissions: ["lonelyblock.mine.diamond"]
+    variables:
+      - "ll_level >= 10"
+
+  tools:
+    - tool: "ni:特殊钻石镐"
+      material: "diamond"     # 钻石材质, 原版速度 8.0 (请与 NI 物品底层 Material 对齐)
+      time: 3.00
+    - tool: "name:&b钻石镐"
+      material: "diamond"
+      time: 5.00
+  default-time: 8.00
+
+  drops:
+    - item: "vanilla:DIAMOND"
+      amount: 1
+      chance: 100.0
+    - item: "mm:稀有宝石"
+      amount: 1
+      chance: 25.0
+      custom-model-data: 10001
+
+  rewards:
+    money: 500.0
+    points: 10
+    exp: 100
+    variables:
+      - "ll_level:2"
+
+  costs:
+    money: 50.0
+    points: 1
+    exp: 0
+    variables: []
+
+  messages:
+    success: "&b你挖到了钻石! &a+%money%金币 &b+%points%点券"
+    broadcast: "&e%player_name% &b挖到了一颗钻石!"
+    wrong-tool: "&c你需要使用 &b特殊钻石镐 &c才能挖掘此矿石!"
+    condition-failed: "&c你的等级不足以挖掘钻石矿 (需 &e10级&c)!"
+    no-permission: "&c你没有权限挖掘钻石矿!"
+    cannot-afford: "&c你需要 &e50金币+1点券 &c才能挖掘!"
+
+  restore:
+    enabled: true
+    time: 120.00
+
+  commands:
+    - "console: say %player_name% 挖到了钻石!"
+
+# ===== 示例3: 石头 (任何工具可挖, 给经验, 不恢复) =====
+stone_example:
+  block-ids:
+    - "minecraft:stone"
+    - "STONE"
+    - "STONE:0"
+
+  # 不填写 tools -> 任何工具都是有效工具, 都会掉落物品, 使用 default-time
+  default-time: 1.00
+
+  drops:
+    - item: "vanilla:COBBLESTONE"
+      amount: "1_3"        # 随机掉落 1~3 个圆石
+      chance: 100.0
+
+  rewards:
+    money: 10.0
+    points: 0
+    exp: 5
+    variables:
+      - "mining_count:1"
+
+  costs:
+    money: 0
+    points: 0
+    exp: 0
+    variables: []
+
+  messages:
+    success: "&a你挖掘了石头!"
+    broadcast: ""
+    wrong-tool: ""
+    condition-failed: ""
+    no-permission: ""
+    cannot-afford: ""
+
+  restore:
+    enabled: false
+    time: 0
