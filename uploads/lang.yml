@@ -1,0 +1,56 @@
+# ====================================================================
+# LonelyBlock 语言文件 - 所有向玩家发送的提示信息均在此自定义
+# (控制台启动/关闭消息已内置代码, 不可配置)
+# ====================================================================
+# 颜色代码使用 & 符号 (如 &c &a &e 等); 1.16+ 支持 HEX: &#FFAA00
+# 变量:
+#   %item_id%   - 物品ID (用于物品未找到提示)
+#   %amount%    - 数量 (用于奖励/扣除提示)
+#   %variable%  - 变量名 (用于变量奖励/扣除提示)
+# ====================================================================
+
+# 消息前缀 (留空则不加前缀)
+prefix: "&8[&aLonelyBlock&8] &r"
+
+# 没有权限时提示 (执行命令)
+no-permission: "&c你没有权限执行此操作!"
+
+# 当玩家用错误工具破坏方块时的默认提示 (可在方块配置 messages.wrong-tool 覆盖)
+invalid-tool: "&c你需要使用正确的工具才能破坏这个方块!"
+
+# 物品库未找到物品
+item-not-found: "&c物品 &e%item_id% &c在物品库中未找到, 请联系管理员检查配置!"
+mythicmobs-not-found: "&c未检测到 MythicMobs 物品库, 无法获取物品 &e%item_id%"
+neigeitems-not-found: "&c未检测到 NeigeItems 物品库, 无法获取物品 &e%item_id%"
+
+# 经济系统未安装
+vault-not-found: "&c未检测到 Vault 经济插件, 无法给予/扣除金币!"
+playerpoints-not-found: "&c未检测到 PlayerPoints 点券插件, 无法给予/扣除点券!"
+
+# 奖励提示 (留空 "" 则不提示)
+money-given: "&a你获得了 &e%amount% &a金币!"
+points-given: "&a你获得了 &e%amount% &a点券!"
+exp-given: "&a你获得了 &e%amount% &a点经验!"
+variable-given: "&a你获得了 &e%amount% &a点 &e%variable%!"
+
+# 扣除提示 (留空 "" 则不提示)
+money-cost: "&c扣除 &e%amount% &c金币!"
+points-cost: "&c扣除 &e%amount% &c点券!"
+exp-cost: "&c扣除 &e%amount% &c点经验!"
+variable-cost: "&c扣除 &e%amount% &c点 &e%variable%!"
+
+# 挖掘条件不满足提示 (默认, 可在方块配置 messages.condition-failed 覆盖)
+condition-failed: "&c你不满足挖掘此方块的条件!"
+no-permission-mine: "&c你没有权限挖掘此方块!"
+cannot-afford: "&c你的资源不足, 无法挖掘此方块!"
+
+# 重新加载提示
+plugin-reloaded: "&a插件配置已重新加载!"
+plugin-reload-failed: "&c插件配置重载失败, 请查看控制台日志!"
+
+# 帮助信息
+help:
+  - "&8&m==========&r &aLonelyBlock &8&m=========="
+  - "&e/lonelyblock reload &7- 重新加载配置文件"
+  - "&e/lonelyblock help &7- 显示此帮助信息"
+  - "&8&m============================="
