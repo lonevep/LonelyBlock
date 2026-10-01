@@ -1,0 +1,30 @@
+name: LonelyBlock
+description: 自定义方块掉落插件 - 支持MythicMobs/NeigeItems/Vault/PlayerPoints/PlaceholderAPI
+version: '${version}'
+main: com.lonelyBlock.LonelyBlock
+api-version: '1.13'
+load: POSTWORLD
+authors: [ lone_vep ]
+
+softdepend:
+  - MythicMobs
+  - NeigeItems
+  - Vault
+  - PlayerPoints
+  - PlaceholderAPI
+
+commands:
+  lonelyblock:
+    description: LonelyBlock主命令
+    usage: /lonelyblock <reload|help>
+    aliases:
+      - lpl
+      - lb
+
+permissions:
+  lonelyblock.admin:
+    description: 管理员权限
+    default: op
+  lonelyblock.use:
+    description: 使用权限
+    default: true
