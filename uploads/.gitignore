@@ -1,14 +1,10 @@
-# 系统文件
-Thumbs.db
-Desktop.ini
-.DS_Store
-
-# 编辑器 / IDE
-.vscode/
-.idea/
-*.swp
-
-# 日志与临时文件
-*.log
-tmp/
-temp/
+# 默认忽略的文件
+/shelf/
+/workspace.xml
+# 基于编辑器的 HTTP 客户端请求
+/httpRequests/
+# 已忽略包含查询文件的默认文件夹
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
