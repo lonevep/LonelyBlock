@@ -19,9 +19,11 @@ com\lonelyBlock\util\VersionUtil$ParsedId.class
 com\lonelyBlock\manager\MiningBuffManager$BuffSession.class
 com\lonelyBlock\Metrics\Metrics.class
 com\lonelyBlock\expansion\LonelyBlockExpansion.class
+com\lonelyBlock\manager\RestorationManager$PendingRestore.class
 com\lonelyBlock\Metrics\Metrics$JsonObjectBuilder$JsonObject.class
 com\lonelyBlock\config\BlockConfig.class
 com\lonelyBlock\hook\PlaceholderAPIHook.class
+com\lonelyBlock\util\VersionUtil$BlockId.class
 com\lonelyBlock\util\RandomValue.class
 com\lonelyBlock\Metrics\Metrics$CustomChart.class
 com\lonelyBlock\Metrics\Metrics$DrilldownPie.class
@@ -34,6 +36,7 @@ com\lonelyBlock\Metrics\Metrics$AdvancedPie.class
 com\lonelyBlock\manager\RestorationManager$1.class
 com\lonelyBlock\util\ColorUtil.class
 com\lonelyBlock\manager\ToolMatcher.class
+com\lonelyBlock\config\ConfigManager$IndexedBlock.class
 com\lonelyBlock\Metrics\Metrics$MultiLineChart.class
 com\lonelyBlock\Metrics\Metrics$MetricsBase.class
 com\lonelyBlock\manager\ConditionChecker$CheckResult.class
@@ -44,4 +47,3 @@ com\lonelyBlock\Metrics\Metrics$1.class
 com\lonelyBlock\LonelyBlock.class
 com\lonelyBlock\config\BlockConfig$VariableEntry.class
 com\lonelyBlock\manager\RestorationManager.class
-com\lonelyBlock\manager\RestorationManager$2.class

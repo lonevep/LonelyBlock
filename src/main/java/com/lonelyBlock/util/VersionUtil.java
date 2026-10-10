@@ -7,51 +7,45 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * 版本工具类 - 处理多版本兼容性
- * 支持 1.8 - 26.x 版本的方块ID匹配、CustomModelData
- *
- * 方块ID格式说明:
- *   "minecraft:oak_log" - 1.13+ 命名空间格式
- *   "OAK_LOG"           - 1.13+ Material名 (大写)
- *   "LOG:0"             - 1.8-1.12 旧格式 (带数据值)
- *   "LOG"               - 1.8-1.12 旧格式 (不指定数据值, 匹配任意变种)
- *
- * 跨版本兼容: 用户在配置中可以同时填写多个版本ID, 插件会自动匹配当前版本可识别的格式
- *
- * 注: 旧版本曾包含自定义发包裂纹动画 (sendBlockDamage) 与 NMS 按键状态检测
- *     (isPlayerMining) 用于自定义挖掘会话. 现挖掘速度改由 急迫/挖掘疲劳 buff 控制
- *     (见 MiningBuffManager / MiningSpeedCalculator), 让原版挖掘系统工作, 原版裂纹
- *     动画天然同步, 上述旧机制及 ProtocolLib 依赖已全部移除.
- */
 public final class VersionUtil {
+
+    private static final int MC_1_9 = 1_009_000;
+    private static final int MC_1_13 = 1_013_000;
 
     private static final int MAJOR_VERSION;
     private static final boolean LEGACY;
+    private static final boolean SUPPORTS_MAIN_HAND;
 
-    // 缓存 ItemMeta#setCustomModelData(Integer) 方法 (1.14+ 存在)
     private static final Method SET_CUSTOM_MODEL_DATA_METHOD;
+    private static final Material MISS = Material.AIR;
+    private static final Map<String, Material> MATERIAL_CACHE = new ConcurrentHashMap<>();
+    private static final Pattern VERSION_TOKEN_PATTERN = Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?");
 
     static {
-        int major = 13;
+        String ver = null;
         try {
-            String bukkitVersion = Bukkit.getVersion();
-            String ver = extractVersion(bukkitVersion);
-            if (ver != null) {
-                String[] parts = ver.split("\\.");
-                if (parts.length >= 2) {
-                    try {
-                        major = Integer.parseInt(parts[1]);
-                    } catch (NumberFormatException ignored) {}
-                }
+            ver = extractVersion(Bukkit.getVersion());
+        } catch (Throwable ignored) {
+        }
+        int versionCode = MC_1_13;
+        if (ver != null && !ver.isEmpty()) {
+            int encoded = encode(ver);
+            if (encoded > 0) {
+                versionCode = encoded;
             }
-        } catch (Throwable ignored) {}
+        }
+        LEGACY = versionCode < MC_1_13;
+        SUPPORTS_MAIN_HAND = versionCode >= MC_1_9;
+        MAJOR_VERSION = resolveMajor(ver);
 
-        MAJOR_VERSION = major;
-        LEGACY = major < 13;
-
-        // 缓存 setCustomModelData 方法 (1.14+)
         Method setCmd = null;
         try {
             setCmd = ItemMeta.class.getMethod("setCustomModelData", Integer.class);
@@ -63,15 +57,49 @@ public final class VersionUtil {
     private VersionUtil() {
     }
 
-    /**
-     * 从Bukkit版本字符串中提取纯版本号
-     */
+    private static int resolveMajor(String ver) {
+        if (ver == null || ver.isEmpty()) {
+            return 13;
+        }
+        try {
+            String[] parts = ver.split("\\.");
+            int first = Integer.parseInt(parts[0].trim());
+            if (first <= 1 && parts.length >= 2) {
+                return Integer.parseInt(parts[1].trim());
+            }
+            return first;
+        } catch (Throwable ignored) {
+            return 13;
+        }
+    }
+
+    private static int encode(String ver) {
+        String[] parts = ver.split("\\.");
+        int a = 0, b = 0, c = 0;
+        try {
+            if (parts.length > 0) a = Integer.parseInt(parts[0].trim());
+            if (parts.length > 1) b = Integer.parseInt(parts[1].trim());
+            if (parts.length > 2) c = Integer.parseInt(parts[2].trim());
+        } catch (NumberFormatException ignored) {
+        }
+        return a * 1_000_000 + b * 1_000 + c;
+    }
+
     private static String extractVersion(String bukkitVersion) {
-        if (bukkitVersion == null) return null;
+        if (bukkitVersion == null || bukkitVersion.isEmpty()) {
+            return null;
+        }
         int mcIdx = bukkitVersion.indexOf("MC:");
         if (mcIdx >= 0) {
             String sub = bukkitVersion.substring(mcIdx + 3).trim();
-            return sub.split("[^0-9.]")[0];
+            String token = sub.split("[^0-9.]")[0];
+            if (!token.isEmpty()) {
+                return token;
+            }
+        }
+        Matcher m = VERSION_TOKEN_PATTERN.matcher(bukkitVersion);
+        if (m.find()) {
+            return m.group();
         }
         String[] parts = bukkitVersion.split("-");
         if (parts.length > 0) {
@@ -88,29 +116,39 @@ public final class VersionUtil {
         return LEGACY;
     }
 
-    /**
-     * 检查方块是否匹配给定的ID列表中的任意一个
-     */
-    public static boolean blockMatches(Block block, java.util.List<String> blockIds) {
-        if (block == null || blockIds == null || blockIds.isEmpty()) {
-            return false;
+    public static boolean supportsMainHand() {
+        return SUPPORTS_MAIN_HAND;
+    }
+
+    public static final class BlockId {
+        private final Material material;
+        private final short damage;
+        private final boolean hasDamage;
+
+        BlockId(Material material, short damage, boolean hasDamage) {
+            this.material = material;
+            this.damage = damage;
+            this.hasDamage = hasDamage;
         }
 
-        Material blockType = block.getType();
-        if (blockType == null || blockType == Material.AIR) {
-            return false;
+        public Material getMaterial() {
+            return material;
         }
 
-        byte blockData = 0;
-        if (LEGACY) {
-            try {
-                @SuppressWarnings("deprecation")
-                byte d = block.getData();
-                blockData = d;
-            } catch (Throwable ignored) {
-            }
+        public short getDamage() {
+            return damage;
         }
 
+        public boolean hasDamage() {
+            return hasDamage;
+        }
+    }
+
+    public static List<BlockId> parseBlockIds(List<String> blockIds) {
+        if (blockIds == null || blockIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<BlockId> result = new ArrayList<>(blockIds.size());
         for (String id : blockIds) {
             if (id == null || id.trim().isEmpty()) {
                 continue;
@@ -119,21 +157,36 @@ public final class VersionUtil {
             if (parsed == null) {
                 continue;
             }
-
-            Material expected = resolveMaterial(parsed.materialName);
-            if (expected == null || expected != blockType) {
+            Material material = resolveMaterial(parsed.materialName);
+            if (material == null || material == Material.AIR) {
                 continue;
             }
-
-            if (parsed.hasDamage && LEGACY) {
-                if (blockData != parsed.damage) {
-                    continue;
-                }
-            }
-
-            return true;
+            result.add(new BlockId(material, parsed.damage, parsed.hasDamage));
         }
-        return false;
+        return result;
+    }
+
+    public static boolean matches(BlockId id, Material blockType, byte blockData) {
+        if (id == null || blockType == null || blockType == Material.AIR) {
+            return false;
+        }
+        if (id.material != blockType) {
+            return false;
+        }
+        return !id.hasDamage || !LEGACY || blockData == (byte) id.damage;
+    }
+
+    public static byte getBlockData(Block block) {
+        if (!LEGACY || block == null) {
+            return 0;
+        }
+        try {
+            @SuppressWarnings("deprecation")
+            byte d = block.getData();
+            return d;
+        } catch (Throwable ignored) {
+            return 0;
+        }
     }
 
     private static ParsedId parseId(String id) {
@@ -163,9 +216,22 @@ public final class VersionUtil {
         if (materialName == null || materialName.isEmpty()) {
             return null;
         }
-
         String name = materialName.trim();
+        if (name.isEmpty()) {
+            return null;
+        }
 
+        Material cached = MATERIAL_CACHE.get(name);
+        if (cached != null) {
+            return cached == MISS ? null : cached;
+        }
+
+        Material resolved = doResolveMaterial(name);
+        MATERIAL_CACHE.put(name, resolved != null ? resolved : MISS);
+        return resolved;
+    }
+
+    private static Material doResolveMaterial(String name) {
         try {
             Material material = Material.matchMaterial(name);
             if (material != null && !isLegacyMaterial(material)) {
@@ -201,29 +267,15 @@ public final class VersionUtil {
         }
     }
 
-    // ================================================================
-    // CustomModelData (1.14+)
-    // ================================================================
-
-    /**
-     * 是否支持 CustomModelData (1.14+)
-     */
     public static boolean supportsCustomModelData() {
         return SET_CUSTOM_MODEL_DATA_METHOD != null;
     }
 
-    /**
-     * 设置物品的 CustomModelData (仅 1.14+ 生效, 低版本静默忽略)
-     *
-     * @param item             物品
-     * @param customModelData  CustomModelData 值 (小于0表示不设置)
-     */
     public static void setCustomModelData(ItemStack item, int customModelData) {
         if (item == null || customModelData < 0) {
             return;
         }
         if (SET_CUSTOM_MODEL_DATA_METHOD == null) {
-            // 当前版本不支持 CustomModelData, 静默忽略
             return;
         }
         try {
@@ -237,9 +289,6 @@ public final class VersionUtil {
         }
     }
 
-    /**
-     * 解析后的方块ID
-     */
     private static class ParsedId {
         final String materialName;
         final short damage;

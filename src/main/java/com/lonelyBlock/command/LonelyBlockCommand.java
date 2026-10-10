@@ -8,14 +8,14 @@ import org.bukkit.command.CommandSender;
 
 import java.util.List;
 
-/**
- * LonelyBlock 命令处理器
- * 处理 /lonelyblock (别名 /lpl, /lb) 命令
- *
- * 子命令:
- *   /lonelyblock reload - 重新加载配置文件
- *   /lonelyblock help  - 显示帮助信息
- */
+ 
+
+
+
+
+
+
+
 public class LonelyBlockCommand implements CommandExecutor {
 
     private final LonelyBlock plugin;
@@ -54,9 +54,9 @@ public class LonelyBlockCommand implements CommandExecutor {
         }
     }
 
-    /**
-     * 重新加载配置文件
-     */
+     
+
+
     private void reloadConfig(CommandSender sender) {
         try {
             plugin.getConfigLoader().load();
@@ -73,9 +73,9 @@ public class LonelyBlockCommand implements CommandExecutor {
         }
     }
 
-    /**
-     * 发送帮助信息
-     */
+     
+
+
     private void sendHelp(CommandSender sender) {
         List<String> help = configManager.getMessageList("help");
         if (help.isEmpty()) {

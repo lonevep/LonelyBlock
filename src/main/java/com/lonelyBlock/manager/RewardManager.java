@@ -7,19 +7,19 @@ import com.lonelyBlock.hook.PlayerPointsHook;
 import com.lonelyBlock.hook.VaultHook;
 import org.bukkit.entity.Player;
 
-/**
- * 奖励与扣除管理器
- *
- * 挖掘成功后:
- *   - 给予奖励 (金币/点券/经验/自定义变量) - 每次挖掘都重新滚动随机值
- *   - 扣除资源 (金币/点券/经验/自定义变量) - 每次挖掘都重新滚动随机值
- *   - 发送对应提示消息
- *
- * 注意: 检查资源充足性 (ConditionChecker) 与实际扣除均在此处滚动随机值,
- *       可能存在轻微不一致 (检查时滚动得 X, 扣除时滚动得 Y > X), 但概率较低且影响小,
- *       且需求是"支持随机值", 这里采用每次滚动的方式以保证奖励随机性.
- *       若需严格一致, 可让 ConditionChecker 与 RewardManager 共用一次滚动结果 (需重构 API).
- */
+ 
+
+
+
+
+
+
+
+
+
+
+
+
 public class RewardManager {
 
     private final LonelyBlock plugin;
@@ -33,28 +33,28 @@ public class RewardManager {
         this.variableManager = variableManager;
     }
 
-    /**
-     * 给予挖掘奖励 (金币/点券/经验/自定义变量)
-     * 每次调用都会重新滚动随机值
-     */
+     
+
+
+
     public void giveRewards(Player player, BlockConfig config) {
         if (player == null || config == null) {
             return;
         }
 
-        // 金币
+        
         if (config.hasRewardMoney()) {
             giveMoney(player, config.rollRewardMoney());
         }
-        // 点券
+        
         if (config.hasRewardPoints()) {
             givePoints(player, config.rollRewardPoints());
         }
-        // 经验
+        
         if (config.hasRewardExp()) {
             giveExp(player, config.rollRewardExp());
         }
-        // 自定义变量
+        
         if (config.hasRewardVariables()) {
             for (BlockConfig.VariableEntry entry : config.getRewardVariables()) {
                 String varName = entry.getName();
@@ -65,17 +65,17 @@ public class RewardManager {
         }
     }
 
-    /**
-     * 扣除挖掘成本 (金币/点券/经验/自定义变量)
-     * 每次调用都会重新滚动随机值
-     * 调用前应已通过 ConditionChecker 验证资源充足
-     */
+     
+
+
+
+
     public void deductCosts(Player player, BlockConfig config) {
         if (player == null || config == null) {
             return;
         }
 
-        // 金币
+        
         if (config.hasCostMoney()) {
             double amount = config.rollCostMoney();
             if (VaultHook.isEnabled()) {
@@ -86,7 +86,7 @@ public class RewardManager {
                 sendMoneyCostMessage(player, amount);
             }
         }
-        // 点券
+        
         if (config.hasCostPoints()) {
             int amount = config.rollCostPoints();
             if (PlayerPointsHook.isEnabled()) {
@@ -94,13 +94,13 @@ public class RewardManager {
             }
             sendPointsCostMessage(player, amount);
         }
-        // 经验
+        
         if (config.hasCostExp()) {
             int amount = config.rollCostExp();
             deductExp(player, amount);
             sendExpCostMessage(player, amount);
         }
-        // 自定义变量
+        
         if (config.hasCostVariables()) {
             for (BlockConfig.VariableEntry entry : config.getCostVariables()) {
                 String varName = entry.getName();
@@ -113,7 +113,7 @@ public class RewardManager {
         }
     }
 
-    // ===== 内部方法: 发放 + 提示 =====
+    
 
     private void giveMoney(Player player, double amount) {
         if (!VaultHook.isEnabled()) {
@@ -169,9 +169,9 @@ public class RewardManager {
         }
     }
 
-    /**
-     * 设置玩家总经验 (跨版本兼容)
-     */
+     
+
+
     private void setTotalExp(Player player, int total) {
         try {
             int level = 0;
