@@ -7,24 +7,24 @@ import com.lonelyBlock.util.VersionUtil;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
-/**
- * 物品管理器 - 统一处理三种物品源的物品获取
- *
- * 支持的物品定义格式:
- *   "mm:物品ID"      - 从 MythicMobs 物品库获取
- *   "ni:物品ID"      - 从 NeigeItems 物品库获取
- *   "vanilla:物品ID" - 原版物品 (如 vanilla:DIAMOND 或 vanilla:minecraft:diamond)
- *
- * 如果未填写前缀或物品库未安装或物品不存在, 会返回错误信息以便向玩家提示
- */
+ 
+
+
+
+
+
+
+
+
+
 public class ItemManager {
 
     public ItemManager() {
     }
 
-    /**
-     * 物品获取结果
-     */
+     
+
+
     public static class ItemResult {
         private final ItemStack item;
         private final String errorMessage;
@@ -67,12 +67,12 @@ public class ItemManager {
         }
     }
 
-    /**
-     * 根据物品定义获取物品
-     *
-     * @param definition 物品定义 (如 "mm:木斧")
-     * @return ItemResult 包含物品或错误信息
-     */
+     
+
+
+
+
+
     public ItemResult getItem(String definition) {
         if (definition == null || definition.trim().isEmpty()) {
             return ItemResult.error("", "", "物品定义为空, 请检查配置文件!");
@@ -103,13 +103,13 @@ public class ItemManager {
         }
     }
 
-    /**
-     * 根据 DropConfig 获取物品 (应用数量与 CustomModelData)
-     * 数量取自 DropConfig 自身 (滚动)
-     *
-     * @param dropConfig 掉落物配置 (含物品定义/数量/CustomModelData)
-     * @return ItemResult 包含配置好数量与CMD的物品, 或错误信息
-     */
+     
+
+
+
+
+
+
     public ItemResult getItem(DropConfig dropConfig) {
         if (dropConfig == null) {
             return ItemResult.error("", "", "掉落物配置为空!");
@@ -117,13 +117,13 @@ public class ItemManager {
         return getItem(dropConfig, dropConfig.rollAmount());
     }
 
-    /**
-     * 根据 DropConfig 获取物品, 使用指定数量 (覆盖 DropConfig 内部数量)
-     *
-     * @param dropConfig 掉落物配置 (含物品定义/CustomModelData)
-     * @param amount     本次掉落数量 (已滚动)
-     * @return ItemResult 包含配置好数量与CMD的物品, 或错误信息
-     */
+     
+
+
+
+
+
+
     public ItemResult getItem(DropConfig dropConfig, int amount) {
         if (dropConfig == null) {
             return ItemResult.error("", "", "掉落物配置为空!");
@@ -134,7 +134,7 @@ public class ItemManager {
         }
         ItemStack item = result.getItem();
         try {
-            // 设置数量
+            
             if (amount > 0) {
                 int maxAmount = item.getMaxStackSize();
                 if (amount > maxAmount) {
@@ -142,19 +142,19 @@ public class ItemManager {
                 }
                 item.setAmount(amount);
             }
-            // 设置 CustomModelData (1.14+ 生效, 低版本静默忽略)
+            
             if (dropConfig.hasCustomModelData()) {
                 VersionUtil.setCustomModelData(item, dropConfig.getCustomModelData());
             }
         } catch (Throwable e) {
-            // 数量/CMD 设置失败不影响物品本身
+            
         }
         return ItemResult.success(item, result.getItemId(), result.getSource());
     }
 
-    /**
-     * 从 MythicMobs 获取物品
-     */
+     
+
+
     private ItemResult getMythicMobsItem(String itemId) {
         if (!MythicMobsHook.isEnabled()) {
             return ItemResult.error(itemId, "mm", "mythicmobs-not-found");
@@ -166,9 +166,9 @@ public class ItemManager {
         return ItemResult.success(item.clone(), itemId, "mm");
     }
 
-    /**
-     * 从 NeigeItems 获取物品
-     */
+     
+
+
     private ItemResult getNeigeItemsItem(String itemId) {
         if (!NeigeItemsHook.isEnabled()) {
             return ItemResult.error(itemId, "ni", "neigeitems-not-found");
@@ -180,12 +180,12 @@ public class ItemManager {
         return ItemResult.success(item.clone(), itemId, "ni");
     }
 
-    /**
-     * 获取原版物品
-     */
+     
+
+
     private ItemResult getVanillaItem(String itemId) {
         try {
-            // 去除 minecraft: 前缀 (旧版本 matchMaterial 不识别命名空间)
+            
             String name = itemId;
             if (name.toLowerCase().startsWith("minecraft:")) {
                 name = name.substring(10);
