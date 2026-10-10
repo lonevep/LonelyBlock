@@ -12,50 +12,22 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * 版本工具类 - 处理多版本兼容性
- * 支持 1.8 - 26.x 版本的方块ID匹配、CustomModelData
- *
- * 方块ID格式说明:
- *   "minecraft:oak_log" - 1.13+ 命名空间格式
- *   "OAK_LOG"           - 1.13+ Material名 (大写)
- *   "LOG:0"             - 1.8-1.12 旧格式 (带数据值)
- *   "LOG"               - 1.8-1.12 旧格式 (不指定数据值, 匹配任意变种)
- *
- * 跨版本兼容: 用户在配置中可以同时填写多个版本ID, 插件会自动匹配当前版本可识别的格式
- *
- * 版本号解析: 兼容 "1.x" 与新的年份版本方案 (如 26.2).
- *   统一编码为 <主>.<次>.<修订> -> 主*1000000 + 次*1000 + 修订, 便于跨方案比较.
- *   LEGACY (1.12 及以下的数据值体系) 判定基于编码值 < 1.13, 避免年份版本被误判为旧版.
- *
- * 性能: resolveMaterial 结果按名称缓存; 方块ID列表在配置加载时一次性预解析为
- *   {@link BlockId}, 事件热路径不再重复做字符串解析与 Material 查找.
- *
- * 注: 旧版本曾包含自定义发包裂纹动画 (sendBlockDamage) 与 NMS 按键状态检测
- *     (isPlayerMining) 用于自定义挖掘会话. 现挖掘速度改由 急迫/挖掘疲劳 buff 控制
- *     (见 MiningBuffManager / MiningSpeedCalculator), 让原版挖掘系统工作, 原版裂纹
- *     动画天然同步, 上述旧机制及 ProtocolLib 依赖已全部移除.
- */
 public final class VersionUtil {
 
-    /** 1.9 的编码值 (主手 API 起始版本) */
     private static final int MC_1_9 = 1_009_000;
-    /** 1.13 的编码值 (扁平化/取消数据值 起始版本) */
     private static final int MC_1_13 = 1_013_000;
 
-    /** 主版本判定 (1.x 取次版本号, 年份版本取主版本号); 仅用于日志展示 */
     private static final int MAJOR_VERSION;
     private static final boolean LEGACY;
-    /** 是否支持主手 API (1.9+) */
     private static final boolean SUPPORTS_MAIN_HAND;
 
-    // 缓存 ItemMeta#setCustomModelData(Integer) 方法 (1.14+ 存在)
     private static final Method SET_CUSTOM_MODEL_DATA_METHOD;
-    // Material 解析失败的哨兵 (AIR 不会用于方块匹配, 可安全作为"未命中"标记)
     private static final Material MISS = Material.AIR;
-    // Material 名称 -> Material 解析缓存 (含失败标记, 避免重复解析失败项)
     private static final Map<String, Material> MATERIAL_CACHE = new ConcurrentHashMap<>();
+    private static final Pattern VERSION_TOKEN_PATTERN = Pattern.compile("\\d+\\.\\d+(?:\\.\\d+)?");
 
     static {
         String ver = null;
@@ -63,14 +35,17 @@ public final class VersionUtil {
             ver = extractVersion(Bukkit.getVersion());
         } catch (Throwable ignored) {
         }
-        // 编码后的服务端版本值: 主*1000000 + 次*1000 + 修订 (如 1.21.4 -> 1021004)
-        int versionCode = (ver != null && !ver.isEmpty()) ? encode(ver) : MC_1_13;
-        // 基于编码值判定, 天然兼容年份版本方案 (26.2 不会被误判为旧版)
+        int versionCode = MC_1_13;
+        if (ver != null && !ver.isEmpty()) {
+            int encoded = encode(ver);
+            if (encoded > 0) {
+                versionCode = encoded;
+            }
+        }
         LEGACY = versionCode < MC_1_13;
         SUPPORTS_MAIN_HAND = versionCode >= MC_1_9;
         MAJOR_VERSION = resolveMajor(ver);
 
-        // 缓存 setCustomModelData 方法 (1.14+)
         Method setCmd = null;
         try {
             setCmd = ItemMeta.class.getMethod("setCustomModelData", Integer.class);
@@ -82,9 +57,6 @@ public final class VersionUtil {
     private VersionUtil() {
     }
 
-    /**
-     * 主版本判定: 1.x 取次版本号 (1.21.4 -> 21); 年份版本取主版本号 (26.2 -> 26)
-     */
     private static int resolveMajor(String ver) {
         if (ver == null || ver.isEmpty()) {
             return 13;
@@ -101,10 +73,6 @@ public final class VersionUtil {
         }
     }
 
-    /**
-     * 将 "1.21.4" / "26.2" 形式的版本号编码为可比较整数
-     * (主*1000000 + 次*1000 + 修订)
-     */
     private static int encode(String ver) {
         String[] parts = ver.split("\\.");
         int a = 0, b = 0, c = 0;
@@ -117,15 +85,21 @@ public final class VersionUtil {
         return a * 1_000_000 + b * 1_000 + c;
     }
 
-    /**
-     * 从Bukkit版本字符串中提取纯版本号
-     */
     private static String extractVersion(String bukkitVersion) {
-        if (bukkitVersion == null) return null;
+        if (bukkitVersion == null || bukkitVersion.isEmpty()) {
+            return null;
+        }
         int mcIdx = bukkitVersion.indexOf("MC:");
         if (mcIdx >= 0) {
             String sub = bukkitVersion.substring(mcIdx + 3).trim();
-            return sub.split("[^0-9.]")[0];
+            String token = sub.split("[^0-9.]")[0];
+            if (!token.isEmpty()) {
+                return token;
+            }
+        }
+        Matcher m = VERSION_TOKEN_PATTERN.matcher(bukkitVersion);
+        if (m.find()) {
+            return m.group();
         }
         String[] parts = bukkitVersion.split("-");
         if (parts.length > 0) {
@@ -142,16 +116,10 @@ public final class VersionUtil {
         return LEGACY;
     }
 
-    /**
-     * 是否支持主手/副手 API (PlayerInventory#getItemInMainHand 等, 1.9+)
-     */
     public static boolean supportsMainHand() {
         return SUPPORTS_MAIN_HAND;
     }
 
-    /**
-     * 预解析后的方块ID: Material + 可选旧版数据值
-     */
     public static final class BlockId {
         private final Material material;
         private final short damage;
@@ -171,18 +139,11 @@ public final class VersionUtil {
             return damage;
         }
 
-        /**
-         * 是否指定了旧版数据值 (仅 1.8-1.12 参与比较)
-         */
         public boolean hasDamage() {
             return hasDamage;
         }
     }
 
-    /**
-     * 批量解析方块ID字符串列表为 {@link BlockId} 列表 (在配置加载时调用一次).
-     * 无法在当前版本解析出的ID会被跳过.
-     */
     public static List<BlockId> parseBlockIds(List<String> blockIds) {
         if (blockIds == null || blockIds.isEmpty()) {
             return Collections.emptyList();
@@ -205,10 +166,6 @@ public final class VersionUtil {
         return result;
     }
 
-    /**
-     * 判断预解析ID是否匹配指定方块.
-     * 旧版 (1.12-) 数据值有指定时才参与比较; 新版忽略数据值.
-     */
     public static boolean matches(BlockId id, Material blockType, byte blockData) {
         if (id == null || blockType == null || blockType == Material.AIR) {
             return false;
@@ -219,9 +176,6 @@ public final class VersionUtil {
         return !id.hasDamage || !LEGACY || blockData == (byte) id.damage;
     }
 
-    /**
-     * 读取方块的旧版数据值 (新版返回 0)
-     */
     public static byte getBlockData(Block block) {
         if (!LEGACY || block == null) {
             return 0;
@@ -258,10 +212,6 @@ public final class VersionUtil {
         return new ParsedId(cleaned, (short) 0, false);
     }
 
-    /**
-     * 解析 Material 名称 (带缓存, 兼容大小写/命名空间/旧版名).
-     * 解析失败或仅能解析为 LEGACY_ 别名时返回 null.
-     */
     public static Material resolveMaterial(String materialName) {
         if (materialName == null || materialName.isEmpty()) {
             return null;
@@ -317,29 +267,15 @@ public final class VersionUtil {
         }
     }
 
-    // ================================================================
-    // CustomModelData (1.14+)
-    // ================================================================
-
-    /**
-     * 是否支持 CustomModelData (1.14+)
-     */
     public static boolean supportsCustomModelData() {
         return SET_CUSTOM_MODEL_DATA_METHOD != null;
     }
 
-    /**
-     * 设置物品的 CustomModelData (仅 1.14+ 生效, 低版本静默忽略)
-     *
-     * @param item             物品
-     * @param customModelData  CustomModelData 值 (小于0表示不设置)
-     */
     public static void setCustomModelData(ItemStack item, int customModelData) {
         if (item == null || customModelData < 0) {
             return;
         }
         if (SET_CUSTOM_MODEL_DATA_METHOD == null) {
-            // 当前版本不支持 CustomModelData, 静默忽略
             return;
         }
         try {
@@ -353,9 +289,6 @@ public final class VersionUtil {
         }
     }
 
-    /**
-     * 解析后的方块ID
-     */
     private static class ParsedId {
         final String materialName;
         final short damage;
